@@ -3,7 +3,7 @@ Gem::Specification.new do |s|
   s.version     = '0.1.0'
   s.summary     = 'AuthFI Ruby SDK'
   s.description = 'JWT validation, RBAC middleware, permission auto-sync for AuthFI'
-  s.authors     = ['Quefly']
+  s.authors     = ['AuthFI']
   s.homepage    = 'https://github.com/authfi/authfi-ruby-sdk'
   s.license     = 'Apache-2.0'
   s.files       = ['authfi.rb']
