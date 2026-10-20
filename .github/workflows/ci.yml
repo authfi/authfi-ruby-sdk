@@ -1,0 +1,25 @@
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby: ['3.1', '3.2', '3.3', '3.4']
+    container: ruby:${{ matrix.ruby }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: gem install --no-document jwt
+      - run: gem install --no-document minitest -v '~> 5.0'
+      - run: ruby test_authfi.rb
+      - name: The gem builds, installs and loads
+        run: |
+          gem build authfi.gemspec
+          gem install --local --no-document authfi-*.gem
+          cd / && ruby -e "require 'authfi'; puts AuthFI::VERSION"
