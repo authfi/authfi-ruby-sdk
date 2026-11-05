@@ -1,0 +1,78 @@
+# Publishes the gem to RubyGems when a version tag (vX.Y.Z) is pushed. RubyGems trusts this workflow by
+# OpenID Connect (trusted publishing): there is no API key anywhere. The trusted publisher on rubygems.org
+# names this repository, this file and the `rubygems` environment, so a copy of the workflow elsewhere cannot
+# publish. The `rubygems` environment needs a reviewer's approval before the publish job starts.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  # Built and tested without the publishing permission, so nothing the build runs can obtain a RubyGems credential.
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ruby/setup-ruby@de492cf36cbab201753d720ce4f4e336cd688c94 # v1.336.0
+        with:
+          ruby-version: '3.4'
+      # A tag on the wrong commit must fail here: a version on RubyGems can be yanked but never replaced.
+      - name: The tag is a version on main, with a changelog entry
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::$TAG is not a version tag (vMAJOR.MINOR.PATCH)"; exit 1; }
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main || { echo "::error::$TAG is not on main"; exit 1; }
+          v="${TAG#v}"
+          [ "$(ruby -e 'puts Gem::Specification.load("authfi.gemspec").version')" = "$v" ] || { echo "::error::authfi.gemspec version is not $v"; exit 1; }
+          [ "$(ruby -r./authfi -e 'puts AuthFI::VERSION')" = "$v" ] || { echo "::error::AuthFI::VERSION is not $v"; exit 1; }
+          grep -Eq "^## \[?${v//./\.}\]?( |$)" CHANGELOG.md || { echo "::error::CHANGELOG.md has no section for $v"; exit 1; }
+      - run: gem install --no-document jwt
+      - run: gem install --no-document minitest -v '~> 5.0'
+      - run: ruby test_authfi.rb
+      - run: gem build authfi.gemspec
+      - name: The gem installs and loads in a clean environment
+        run: |
+          gem install --local --no-document authfi-*.gem
+          cd / && ruby -e "require 'authfi'; puts AuthFI::VERSION"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: gem
+          path: authfi-*.gem
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: rubygems
+      url: https://rubygems.org/gems/authfi
+    permissions:
+      contents: read
+      id-token: write # RubyGems exchanges this OIDC token for a short-lived push credential
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: gem
+          path: pkg/
+      - uses: ruby/setup-ruby@de492cf36cbab201753d720ce4f4e336cd688c94 # v1.336.0
+        with:
+          ruby-version: '3.4'
+      - uses: rubygems/configure-rubygems-credentials@dc5a8d8553e6ee01fc26761a49e99e733d17954a # v2.1.0
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: pkg/authfi-*.gem
+      # The gem built above, not a rebuild: what was tested is what is published.
+      - run: gem push pkg/authfi-*.gem
