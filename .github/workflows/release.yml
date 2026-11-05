@@ -37,7 +37,7 @@ jobs:
           v="${TAG#v}"
           [ "$(ruby -e 'puts Gem::Specification.load("authfi.gemspec").version')" = "$v" ] || { echo "::error::authfi.gemspec version is not $v"; exit 1; }
           [ "$(ruby -r./authfi -e 'puts AuthFI::VERSION')" = "$v" ] || { echo "::error::AuthFI::VERSION is not $v"; exit 1; }
-          grep -Eq "^## \[?${v//./\.}\]?( |$)" CHANGELOG.md || { echo "::error::CHANGELOG.md has no section for $v"; exit 1; }
+          grep -Eq "^## \[?${v//./\\.}\]?( |$)" CHANGELOG.md || { echo "::error::CHANGELOG.md has no section for $v"; exit 1; }
       - run: gem install --no-document jwt
       - run: gem install --no-document minitest -v '~> 5.0'
       - run: ruby test_authfi.rb
