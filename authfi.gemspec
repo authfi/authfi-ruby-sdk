@@ -6,9 +6,13 @@ Gem::Specification.new do |s|
   s.authors     = ['AuthFI']
   s.homepage    = 'https://github.com/authfi/authfi-ruby-sdk'
   s.license     = 'Apache-2.0'
-  s.files       = ['authfi.rb']
+  s.files       = ['authfi.rb', 'CHANGELOG.md', 'LICENSE', 'NOTICE', 'README.md']
   s.require_paths = ['.']
   s.required_ruby_version = '>= 3.1'
+  s.metadata = {
+    'source_code_uri' => 'https://github.com/authfi/authfi-ruby-sdk',
+    'changelog_uri' => 'https://github.com/authfi/authfi-ruby-sdk/blob/main/CHANGELOG.md'
+  }
 
   # Verification uses the standard library's OpenSSL (RSA and Ed25519), so there
   # is no runtime dependency. The jwt gem signs the RS256 tokens the tests verify.
